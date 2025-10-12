@@ -20,7 +20,7 @@ class PlayerMovementInputHandlerTest {
     @BeforeEach
     void setUp() {
         // Подготавливаем модель игрока
-        player = new PlayerModel();
+        player = new PlayerModel(new GridPoint2(1 ,1));
         obstacle = new GridPoint2(99, 99); // далеко, не мешает
         handler = new PlayerMovementInputHandler(player, obstacle);
 

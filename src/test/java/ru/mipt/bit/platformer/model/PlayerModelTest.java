@@ -9,29 +9,29 @@ class PlayerModelTest {
 
     @Test
     void testInitialState() {
-        PlayerModel player = new PlayerModel();
-        assertEquals(new GridPoint2(1, 1), player.getPlayerCoordinates());
+        PlayerModel player = new PlayerModel(new GridPoint2(1, 1));
+        assertEquals(new GridPoint2(1, 1), player.getCoordinates());
         assertEquals(1f, player.getPlayerMovementProgress());
         assertEquals(0f, player.getPlayerRotation());
     }
 
     @Test
     void testResetMovementProgress() {
-        PlayerModel player = new PlayerModel();
+        PlayerModel player = new PlayerModel(new GridPoint2(1, 1));
         player.resetMovementProgress();
         assertEquals(0f, player.getPlayerMovementProgress());
     }
 
     @Test
     void testSetRotation() {
-        PlayerModel player = new PlayerModel();
+        PlayerModel player = new PlayerModel(new GridPoint2(1, 1));
         player.setPlayerRotation(45f);
         assertEquals(45f, player.getPlayerRotation());
     }
 
     @Test
     void testDestinationCoordinatesUpdate() {
-        PlayerModel player = new PlayerModel();
+        PlayerModel player = new PlayerModel(new GridPoint2(1, 1));
         player.getPlayerDestinationCoordinates().add(1, 0);
         assertEquals(new GridPoint2(2, 1), player.getPlayerDestinationCoordinates());
     }

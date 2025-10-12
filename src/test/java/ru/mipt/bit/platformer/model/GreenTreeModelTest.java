@@ -10,6 +10,6 @@ class GreenTreeModelTest {
     void testTreeCoordinatesStoredCorrectly() {
         GridPoint2 coords = new GridPoint2(2, 3);
         GreenTreeModel tree = new GreenTreeModel(coords);
-        assertEquals(coords, tree.getTreeObstacleCoordinates());
+        assertEquals(coords, tree.getCoordinates());
     }
 }
