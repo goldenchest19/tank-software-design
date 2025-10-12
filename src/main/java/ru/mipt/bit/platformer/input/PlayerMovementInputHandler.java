@@ -2,7 +2,7 @@ package ru.mipt.bit.platformer.input;
 
 import com.badlogic.gdx.math.GridPoint2;
 import ru.mipt.bit.platformer.model.Direction;
-import ru.mipt.bit.platformer.model.PlayerModel;
+import ru.mipt.bit.platformer.model.Movable;
 
 import static com.badlogic.gdx.math.MathUtils.isEqual;
 
@@ -11,10 +11,10 @@ import static com.badlogic.gdx.math.MathUtils.isEqual;
  */
 public class PlayerMovementInputHandler implements GameInputHandler {
 
-    private final PlayerModel player;
+    private final Movable player;
     private final GridPoint2 obstacleCoordinates;
 
-    public PlayerMovementInputHandler(PlayerModel player, GridPoint2 obstacleCoordinates) {
+    public PlayerMovementInputHandler(Movable player, GridPoint2 obstacleCoordinates) {
         this.player = player;
         this.obstacleCoordinates = obstacleCoordinates;
     }
@@ -23,7 +23,7 @@ public class PlayerMovementInputHandler implements GameInputHandler {
     public void handleInput() {
         for (Direction direction : Direction.values()) {
             if (direction.isPressed() && isEqual(player.getPlayerMovementProgress(), 1f)) {
-                GridPoint2 next = new GridPoint2(player.getPlayerCoordinates()).add(direction.getDelta());
+                GridPoint2 next = new GridPoint2(player.getCoordinates()).add(direction.getDelta());
 
                 // Проверка на коллизию с препятствием
                 if (!obstacleCoordinates.equals(next)) {

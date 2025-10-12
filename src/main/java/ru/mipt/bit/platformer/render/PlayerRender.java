@@ -4,7 +4,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
-import ru.mipt.bit.platformer.model.PlayerModel;
+import ru.mipt.bit.platformer.model.Movable;
 
 import static ru.mipt.bit.platformer.util.GdxGameUtils.createBoundingRectangle;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.drawTextureRegionUnscaled;
@@ -42,11 +42,7 @@ public class PlayerRender {
         blueTankTexture.dispose();
     }
 
-    public TextureRegion getPlayerGraphics() {
-        return playerGraphics;
-    }
-
-    public void render(Batch batch, PlayerModel playerModel) {
+    public void render(Batch batch, Movable playerModel) {
         drawTextureRegionUnscaled(batch, playerGraphics, playerRectangle, playerModel.getPlayerRotation());
     }
 }

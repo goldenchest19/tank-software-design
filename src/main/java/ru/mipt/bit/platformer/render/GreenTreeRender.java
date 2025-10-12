@@ -30,7 +30,6 @@ public class GreenTreeRender {
 
     public GreenTreeRender(GameMap gameMap, GridPoint2 treePosition) {
         this.greenTreeTexture = new Texture(Gdx.files.internal(IMAGES_GREEN_TREE_PNG));
-        ;
         this.treeObstacleGraphics = new TextureRegion(greenTreeTexture);
         this.treeObstacleRectangle = new Rectangle()
                 .setWidth(treeObstacleGraphics.getRegionWidth())

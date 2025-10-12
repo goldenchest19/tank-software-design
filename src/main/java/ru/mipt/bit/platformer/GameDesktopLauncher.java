@@ -7,7 +7,9 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.GridPoint2;
 import ru.mipt.bit.platformer.input.CompositeInputHandler;
 import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
+import ru.mipt.bit.platformer.model.BaseModel;
 import ru.mipt.bit.platformer.model.GreenTreeModel;
+import ru.mipt.bit.platformer.model.Movable;
 import ru.mipt.bit.platformer.model.PlayerModel;
 import ru.mipt.bit.platformer.render.GameMap;
 import ru.mipt.bit.platformer.render.GreenTreeRender;
@@ -20,8 +22,8 @@ public class GameDesktopLauncher implements ApplicationListener {
     private Batch batch;
     private GameMap gameMap;
     private PlayerRender playerRender;
-    private PlayerModel playerModel;
-    private GreenTreeModel greenTreeModel;
+    private Movable playerModel;
+    private BaseModel greenTreeModel;
     private GreenTreeRender greenTreeRender;
     private CompositeInputHandler inputHandler;
 
@@ -31,14 +33,14 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         gameMap = new GameMap(batch);
         playerRender = new PlayerRender();
-        playerModel = new PlayerModel();
+        playerModel = new PlayerModel(new GridPoint2(1, 1));
 
         greenTreeModel = new GreenTreeModel(new GridPoint2(1, 3));
-        greenTreeRender = new GreenTreeRender(gameMap, greenTreeModel.getTreeObstacleCoordinates());
+        greenTreeRender = new GreenTreeRender(gameMap, greenTreeModel.getCoordinates());
 
         // Инициализация системы ввода
         inputHandler = new CompositeInputHandler();
-        inputHandler.addHandler(new PlayerMovementInputHandler(playerModel, greenTreeModel.getTreeObstacleCoordinates()));
+        inputHandler.addHandler(new PlayerMovementInputHandler(playerModel, greenTreeModel.getCoordinates()));
     }
 
     @Override
@@ -80,7 +82,7 @@ public class GameDesktopLauncher implements ApplicationListener {
         inputHandler.handleInput();
 
         // calculate interpolated player screen coordinates
-        gameMap.moveRectangleBetweenTileCenters(playerRender.getPlayerRectangle(), playerModel.getPlayerCoordinates(),
+        gameMap.moveRectangleBetweenTileCenters(playerRender.getPlayerRectangle(), playerModel.getCoordinates(),
                 playerModel.getPlayerDestinationCoordinates(), playerModel.getPlayerMovementProgress());
 
         playerModel.updateProgress();

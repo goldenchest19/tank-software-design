@@ -9,7 +9,7 @@ import static ru.mipt.bit.platformer.util.GdxGameUtils.continueProgress;
 /**
  * Класс, представляющий игрока в игре
  */
-public class PlayerModel {
+public class PlayerModel extends BaseModel implements Movable {
     /**
      * Скорость перемещения игрока между клетками (в секундах)
      */
@@ -21,11 +21,6 @@ public class PlayerModel {
     private final GridPoint2 playerDestinationCoordinates;
 
     /**
-     * Координаты клетки, в которой находится игрок
-     */
-    private final GridPoint2 playerCoordinates;
-
-    /**
      * Угол поворота игрока (в градусах)
      */
     private float playerRotation;
@@ -35,9 +30,9 @@ public class PlayerModel {
      */
     private float playerMovementProgress = 1f;
 
-    public PlayerModel() {
-        playerDestinationCoordinates = new GridPoint2(1, 1);
-        playerCoordinates = new GridPoint2(playerDestinationCoordinates);
+    public PlayerModel(GridPoint2 initialCoordinates) {
+        super(initialCoordinates);
+        playerDestinationCoordinates = new GridPoint2(initialCoordinates);
         playerRotation = 0f;
     }
 
@@ -51,7 +46,7 @@ public class PlayerModel {
         playerMovementProgress = continueProgress(playerMovementProgress, deltaTime, MOVEMENT_SPEED);
         if (isEqual(playerMovementProgress, 1f)) {
             // record that the player has reached his/her destination
-            playerCoordinates.set(playerDestinationCoordinates);
+            getCoordinates().set(playerDestinationCoordinates);
         }
     }
 
@@ -65,10 +60,6 @@ public class PlayerModel {
 
     public GridPoint2 getPlayerDestinationCoordinates() {
         return playerDestinationCoordinates;
-    }
-
-    public GridPoint2 getPlayerCoordinates() {
-        return playerCoordinates;
     }
 
     public float getPlayerRotation() {
