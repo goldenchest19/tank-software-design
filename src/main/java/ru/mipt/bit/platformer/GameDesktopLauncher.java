@@ -5,72 +5,47 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.GridPoint2;
-import ru.mipt.bit.platformer.model.GameMap;
-import ru.mipt.bit.platformer.model.GreenTree;
-import ru.mipt.bit.platformer.model.Player;
-import ru.mipt.bit.platformer.model.Tank;
+import ru.mipt.bit.platformer.input.CompositeInputHandler;
+import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
+import ru.mipt.bit.platformer.model.GreenTreeModel;
+import ru.mipt.bit.platformer.model.PlayerModel;
+import ru.mipt.bit.platformer.render.GameMap;
+import ru.mipt.bit.platformer.render.GreenTreeRender;
+import ru.mipt.bit.platformer.render.PlayerRender;
 
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
-import static ru.mipt.bit.platformer.util.GdxGameUtils.drawTextureRegionUnscaled;
-import static ru.mipt.bit.platformer.util.GdxGameUtils.moveRectangleAtTileCenter;
-
 
 public class GameDesktopLauncher implements ApplicationListener {
 
     private Batch batch;
     private GameMap gameMap;
-    private Tank tank;
-    private GreenTree greenTree;
-    private Player player;
+    private PlayerRender playerRender;
+    private PlayerModel playerModel;
+    private GreenTreeModel greenTreeModel;
+    private GreenTreeRender greenTreeRender;
+    private CompositeInputHandler inputHandler;
 
-    /**
-     * Вызывается один раз при запуске игры
-     * Загружает ресурсы (текстуры, карту), инициализирует объекты игрока и препятствий
-     */
     @Override
     public void create() {
         batch = new SpriteBatch();
 
         gameMap = new GameMap(batch);
-        tank = new Tank();
-        greenTree = new GreenTree(new GridPoint2(1, 3));
-        player = new Player();
+        playerRender = new PlayerRender();
+        playerModel = new PlayerModel();
 
-        moveRectangleAtTileCenter(gameMap.getGroundLayer(),
-                greenTree.getTreeObstacleRectangle(), greenTree.getTreeObstacleCoordinates());
+        greenTreeModel = new GreenTreeModel(new GridPoint2(1, 3));
+        greenTreeRender = new GreenTreeRender(gameMap, greenTreeModel.getTreeObstacleCoordinates());
+
+        // Инициализация системы ввода
+        inputHandler = new CompositeInputHandler();
+        inputHandler.addHandler(new PlayerMovementInputHandler(playerModel, greenTreeModel.getTreeObstacleCoordinates()));
     }
 
     @Override
     public void render() {
-        // clear the screen
-        Gdx.gl.glClearColor(0f, 0f, 0.2f, 1f);
-        Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
+        updateGameProgress();
 
-        // get time passed since the last render
-        float deltaTime = Gdx.graphics.getDeltaTime();
-
-        player.movePlayer(greenTree.getTreeObstacleCoordinates());
-
-        // calculate interpolated player screen coordinates
-        gameMap.moveRectangleBetweenTileCenters(tank.getPlayerRectangle(), player.getPlayerCoordinates(),
-                player.getPlayerDestinationCoordinates(), player.getPlayerMovementProgress());
-
-        player.updateProgress(deltaTime);
-
-        // render each tile of the level
-        gameMap.render();
-
-        // start recording all drawing commands
-        batch.begin();
-
-        // render player
-        drawTextureRegionUnscaled(batch, tank.getPlayerGraphics(), tank.getPlayerRectangle(), player.getPlayerRotation());
-
-        // render tree obstacle
-        drawTextureRegionUnscaled(batch, greenTree.getTreeObstacleGraphics(), greenTree.getTreeObstacleRectangle(), 0f);
-
-        // submit all drawing requests
-        batch.end();
+        drawGraphicChanges();
     }
 
     /**
@@ -79,8 +54,8 @@ public class GameDesktopLauncher implements ApplicationListener {
     @Override
     public void dispose() {
         // dispose of all the native resources (classes which implement com.badlogic.gdx.utils.Disposable)
-        greenTree.greenTreeTextureDispose();
-        tank.blueTankTextureDispose();
+        greenTreeRender.dispose();
+        playerRender.blueTankTextureDispose();
         gameMap.levelDispose();
         batch.dispose();
     }
@@ -98,5 +73,41 @@ public class GameDesktopLauncher implements ApplicationListener {
     @Override
     public void resume() {
         // game doesn't get paused
+    }
+
+    private void updateGameProgress() {
+        // Теперь обработка ввода вынесена в отдельный класс
+        inputHandler.handleInput();
+
+        // calculate interpolated player screen coordinates
+        gameMap.moveRectangleBetweenTileCenters(playerRender.getPlayerRectangle(), playerModel.getPlayerCoordinates(),
+                playerModel.getPlayerDestinationCoordinates(), playerModel.getPlayerMovementProgress());
+
+        playerModel.updateProgress();
+    }
+
+    private void drawGraphicChanges() {
+        // clear the screen
+        clearScreen();
+
+        // render each tile of the level
+        gameMap.render();
+
+        // start recording all drawing commands
+        batch.begin();
+
+        // render player
+        playerRender.render(batch, playerModel);
+
+        // render tree obstacle
+        greenTreeRender.render(batch);
+
+        // submit all drawing requests
+        batch.end();
+    }
+
+    private static void clearScreen() {
+        Gdx.gl.glClearColor(0f, 0f, 0.2f, 1f);
+        Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
     }
 }
