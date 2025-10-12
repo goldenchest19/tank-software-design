@@ -42,27 +42,6 @@ public class PlayerModel {
     }
 
     /**
-     * Метод для обновления координаты при каждом нажатии
-     * @param treeObstacleCoordinates - координаты препятствия
-     */
-    public void movePlayer(GridPoint2 treeObstacleCoordinates) {
-        for (Direction direction : Direction.values()) {
-            if (direction.isPressed() && isEqual(playerMovementProgress, 1f)) {
-                GridPoint2 next = new GridPoint2(playerCoordinates).add(direction.getDelta());
-
-                // проверка коллизии с препятствием
-                if (!treeObstacleCoordinates.equals(next)) {
-                    playerDestinationCoordinates.set(next);
-                    playerMovementProgress = 0f;
-                }
-
-                playerRotation = direction.getRotation();
-                break;
-            }
-        }
-    }
-
-    /**
      * Обновляет прогресс движения игрока между клетками
      */
     public void updateProgress() {
@@ -74,6 +53,14 @@ public class PlayerModel {
             // record that the player has reached his/her destination
             playerCoordinates.set(playerDestinationCoordinates);
         }
+    }
+
+    public void resetMovementProgress() {
+        this.playerMovementProgress = 0f;
+    }
+
+    public void setPlayerRotation(float rotation) {
+        this.playerRotation = rotation;
     }
 
     public GridPoint2 getPlayerDestinationCoordinates() {
