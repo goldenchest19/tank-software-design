@@ -1,73 +1,94 @@
 package ru.mipt.bit.platformer.model;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.GridPoint2;
 
+import static com.badlogic.gdx.math.MathUtils.isEqual;
+import static ru.mipt.bit.platformer.util.GdxGameUtils.continueProgress;
+
+/**
+ * Класс, представляющий игрока в игре
+ */
 public class PlayerModel {
     /**
-     * Координаты клетки, в которой находится игрок
+     * Скорость перемещения игрока между клетками (в секундах)
      */
-    private GridPoint2 playerCoordinates;
+    private static final float MOVEMENT_SPEED = 0.4f;
 
     /**
      * Координаты клетки, к которой движется игрок
      */
-    private GridPoint2 playerDestinationCoordinates;
+    private final GridPoint2 playerDestinationCoordinates;
 
     /**
-     * Прогресс перемещения игрока между клетками (от 0 до 1)
+     * Координаты клетки, в которой находится игрок
      */
-    private float playerMovementProgress;
+    private final GridPoint2 playerCoordinates;
 
     /**
      * Угол поворота игрока (в градусах)
      */
     private float playerRotation;
 
-    public PlayerModel(GridPoint2 startCoordinates) {
-        this.playerCoordinates = startCoordinates;
-        this.playerDestinationCoordinates = startCoordinates;
-        this.playerMovementProgress = 0f;
-        this.playerRotation = 0f;
+    /**
+     * Прогресс перемещения игрока между клетками (от 0 до 1)
+     */
+    private float playerMovementProgress = 1f;
+
+    public PlayerModel() {
+        playerDestinationCoordinates = new GridPoint2(1, 1);
+        playerCoordinates = new GridPoint2(playerDestinationCoordinates);
+        playerRotation = 0f;
     }
 
-    public void moveTo(GridPoint2 destination) {
-        if (!isMoving()) {
-            this.playerDestinationCoordinates = destination;
-            this.playerMovementProgress = 0f;
-        }
-    }
+    /**
+     * Метод для обновления координаты при каждом нажатии
+     * @param treeObstacleCoordinates - координаты препятствия
+     */
+    public void movePlayer(GridPoint2 treeObstacleCoordinates) {
+        for (Direction direction : Direction.values()) {
+            if (direction.isPressed() && isEqual(playerMovementProgress, 1f)) {
+                GridPoint2 next = new GridPoint2(playerCoordinates).add(direction.getDelta());
 
-    public void update(float deltaTime, float movementSpeed) {
-        if (isMoving()) {
-            playerMovementProgress += deltaTime * movementSpeed;
-            if (playerMovementProgress >= 1f) {
-                playerCoordinates = playerDestinationCoordinates;
-                playerMovementProgress = 0f;
+                // проверка коллизии с препятствием
+                if (!treeObstacleCoordinates.equals(next)) {
+                    playerDestinationCoordinates.set(next);
+                    playerMovementProgress = 0f;
+                }
+
+                playerRotation = direction.getRotation();
+                break;
             }
         }
     }
 
-    public boolean isMoving() {
-        return !playerCoordinates.equals(playerDestinationCoordinates);
-    }
+    /**
+     * Обновляет прогресс движения игрока между клетками
+     */
+    public void updateProgress() {
+        // время, прошедшее с прошлого кадра
+        float deltaTime = Gdx.graphics.getDeltaTime();
 
-    public GridPoint2 getPlayerCoordinates() {
-        return playerCoordinates;
+        playerMovementProgress = continueProgress(playerMovementProgress, deltaTime, MOVEMENT_SPEED);
+        if (isEqual(playerMovementProgress, 1f)) {
+            // record that the player has reached his/her destination
+            playerCoordinates.set(playerDestinationCoordinates);
+        }
     }
 
     public GridPoint2 getPlayerDestinationCoordinates() {
         return playerDestinationCoordinates;
     }
 
-    public float getPlayerMovementProgress() {
-        return playerMovementProgress;
+    public GridPoint2 getPlayerCoordinates() {
+        return playerCoordinates;
     }
 
     public float getPlayerRotation() {
         return playerRotation;
     }
 
-    public void setPlayerRotation(float playerRotation) {
-        this.playerRotation = playerRotation;
+    public float getPlayerMovementProgress() {
+        return playerMovementProgress;
     }
 }

@@ -5,22 +5,21 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.GridPoint2;
-import ru.mipt.bit.platformer.model.GameMap;
+import ru.mipt.bit.platformer.render.GameMap;
 import ru.mipt.bit.platformer.model.GreenTreeModel;
-import ru.mipt.bit.platformer.model.Player;
-import ru.mipt.bit.platformer.model.Tank;
+import ru.mipt.bit.platformer.model.PlayerModel;
 import ru.mipt.bit.platformer.render.GreenTreeRender;
+import ru.mipt.bit.platformer.render.PlayerRender;
 
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
-import static ru.mipt.bit.platformer.util.GdxGameUtils.drawTextureRegionUnscaled;
 
 
 public class GameDesktopLauncher implements ApplicationListener {
 
     private Batch batch;
     private GameMap gameMap;
-    private Tank tank;
-    private Player player;
+    private PlayerRender playerRender;
+    private PlayerModel playerModel;
     private GreenTreeModel greenTreeModel;
     private GreenTreeRender greenTreeRender;
 
@@ -33,8 +32,8 @@ public class GameDesktopLauncher implements ApplicationListener {
         batch = new SpriteBatch();
 
         gameMap = new GameMap(batch);
-        tank = new Tank();
-        player = new Player();
+        playerRender = new PlayerRender();
+        playerModel = new PlayerModel();
 
         greenTreeModel = new GreenTreeModel(new GridPoint2(1, 3));
         greenTreeRender = new GreenTreeRender(gameMap, greenTreeModel.getTreeObstacleCoordinates());
@@ -42,35 +41,9 @@ public class GameDesktopLauncher implements ApplicationListener {
 
     @Override
     public void render() {
-        // get time passed since the last render
-        float deltaTime = Gdx.graphics.getDeltaTime();
+        updateGameProgress();
 
-        // Передаем координаты препятствия для проверки коллизий
-        player.movePlayer(greenTreeModel.getTreeObstacleCoordinates());
-
-        // calculate interpolated player screen coordinates
-        gameMap.moveRectangleBetweenTileCenters(tank.getPlayerRectangle(), player.getPlayerCoordinates(),
-                player.getPlayerDestinationCoordinates(), player.getPlayerMovementProgress());
-
-        player.updateProgress(deltaTime);
-
-        // clear the screen
-        clearScreen();
-
-        // render each tile of the level
-        gameMap.render();
-
-        // start recording all drawing commands
-        batch.begin();
-
-        // render player
-        drawTextureRegionUnscaled(batch, tank.getPlayerGraphics(), tank.getPlayerRectangle(), player.getPlayerRotation());
-
-        // render tree obstacle
-        greenTreeRender.render(batch);
-
-        // submit all drawing requests
-        batch.end();
+        drawGraphicChanges();
     }
 
     /**
@@ -80,7 +53,7 @@ public class GameDesktopLauncher implements ApplicationListener {
     public void dispose() {
         // dispose of all the native resources (classes which implement com.badlogic.gdx.utils.Disposable)
         greenTreeRender.dispose();
-        tank.blueTankTextureDispose();
+        playerRender.blueTankTextureDispose();
         gameMap.levelDispose();
         batch.dispose();
     }
@@ -98,6 +71,37 @@ public class GameDesktopLauncher implements ApplicationListener {
     @Override
     public void resume() {
         // game doesn't get paused
+    }
+
+    private void updateGameProgress() {
+        // Передаем координаты препятствия для проверки коллизий
+        playerModel.movePlayer(greenTreeModel.getTreeObstacleCoordinates());
+
+        // calculate interpolated player screen coordinates
+        gameMap.moveRectangleBetweenTileCenters(playerRender.getPlayerRectangle(), playerModel.getPlayerCoordinates(),
+                playerModel.getPlayerDestinationCoordinates(), playerModel.getPlayerMovementProgress());
+
+        playerModel.updateProgress();
+    }
+
+    private void drawGraphicChanges() {
+        // clear the screen
+        clearScreen();
+
+        // render each tile of the level
+        gameMap.render();
+
+        // start recording all drawing commands
+        batch.begin();
+
+        // render player
+        playerRender.render(batch, playerModel);
+
+        // render tree obstacle
+        greenTreeRender.render(batch);
+
+        // submit all drawing requests
+        batch.end();
     }
 
     private static void clearScreen() {

@@ -1,4 +1,4 @@
-package ru.mipt.bit.platformer.model;
+package ru.mipt.bit.platformer.render;
 
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.maps.Map;
