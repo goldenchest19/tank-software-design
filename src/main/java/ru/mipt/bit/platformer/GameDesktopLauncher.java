@@ -5,8 +5,14 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.GridPoint2;
+import ru.mipt.bit.platformer.config.GameConfig;
+import ru.mipt.bit.platformer.config.GameConfig.LevelMode;
 import ru.mipt.bit.platformer.input.CompositeInputHandler;
 import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
+import ru.mipt.bit.platformer.level.FileLevelGenerator;
+import ru.mipt.bit.platformer.level.Level;
+import ru.mipt.bit.platformer.level.LevelGenerator;
+import ru.mipt.bit.platformer.level.RandomLevelGenerator;
 import ru.mipt.bit.platformer.model.BaseModel;
 import ru.mipt.bit.platformer.model.GreenTreeModel;
 import ru.mipt.bit.platformer.model.Movable;
@@ -14,6 +20,11 @@ import ru.mipt.bit.platformer.model.PlayerModel;
 import ru.mipt.bit.platformer.render.GameMap;
 import ru.mipt.bit.platformer.render.GreenTreeRender;
 import ru.mipt.bit.platformer.render.PlayerRender;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
 
@@ -23,24 +34,49 @@ public class GameDesktopLauncher implements ApplicationListener {
     private GameMap gameMap;
     private PlayerRender playerRender;
     private Movable playerModel;
-    private BaseModel greenTreeModel;
-    private GreenTreeRender greenTreeRender;
     private CompositeInputHandler inputHandler;
+
+    // Деревья: храним модели и рендеры в списках
+    private final List<BaseModel> treeModels = new ArrayList<>();
+    private final List<GreenTreeRender> treeRenders = new ArrayList<>();
 
     @Override
     public void create() {
         batch = new SpriteBatch();
-
         gameMap = new GameMap(batch);
         playerRender = new PlayerRender();
-        playerModel = new PlayerModel(new GridPoint2(1, 1));
 
-        greenTreeModel = new GreenTreeModel(new GridPoint2(1, 3));
-        greenTreeRender = new GreenTreeRender(gameMap, greenTreeModel.getCoordinates());
+        // --- Выбор генератора из конфига ---
+        LevelGenerator generator;
+        Level level;
 
-        // Инициализация системы ввода
+        LevelMode mode = GameConfig.getLevelMode();
+        if (mode == LevelMode.FILE) {
+            try {
+                generator = new FileLevelGenerator(GameConfig.getLevelFilePath());
+                level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+            } catch (Exception e) {
+                Gdx.app.log("LevelGen", "Failed to load level from file, fallback to random. " + e.getMessage());
+                generator = new RandomLevelGenerator(GameConfig.getRandomObstacleDensity());
+                level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+            }
+        } else {
+            generator = new RandomLevelGenerator(GameConfig.getRandomObstacleDensity());
+            level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+        }
+
+        // Далее — всё как раньше:
+        playerModel = new PlayerModel(level.getPlayerStart());
+        Set<GridPoint2> obstacleSet = new HashSet<>(level.getObstacles());
+
+        for (GridPoint2 pos : obstacleSet) {
+            BaseModel treeModel = new GreenTreeModel(new GridPoint2(pos));
+            treeModels.add(treeModel);
+            treeRenders.add(new GreenTreeRender(gameMap, treeModel.getCoordinates()));
+        }
+
         inputHandler = new CompositeInputHandler();
-        inputHandler.addHandler(new PlayerMovementInputHandler(playerModel, greenTreeModel.getCoordinates()));
+        inputHandler.addHandler(new PlayerMovementInputHandler(playerModel, obstacleSet));
     }
 
     @Override
@@ -56,7 +92,9 @@ public class GameDesktopLauncher implements ApplicationListener {
     @Override
     public void dispose() {
         // dispose of all the native resources (classes which implement com.badlogic.gdx.utils.Disposable)
-        greenTreeRender.dispose();
+        for (GreenTreeRender r : treeRenders) {
+            r.dispose();
+        }
         playerRender.blueTankTextureDispose();
         gameMap.levelDispose();
         batch.dispose();
@@ -101,8 +139,10 @@ public class GameDesktopLauncher implements ApplicationListener {
         // render player
         playerRender.render(batch, playerModel);
 
-        // render tree obstacle
-        greenTreeRender.render(batch);
+        // render all tree obstacles
+        for (GreenTreeRender r : treeRenders) {
+            r.render(batch);
+        }
 
         // submit all drawing requests
         batch.end();
