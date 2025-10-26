@@ -5,6 +5,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.GridPoint2;
+import ru.mipt.bit.platformer.config.GameConfig;
+import ru.mipt.bit.platformer.config.GameConfig.LevelMode;
 import ru.mipt.bit.platformer.input.CompositeInputHandler;
 import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
 import ru.mipt.bit.platformer.level.FileLevelGenerator;
@@ -41,36 +43,38 @@ public class GameDesktopLauncher implements ApplicationListener {
     @Override
     public void create() {
         batch = new SpriteBatch();
-
         gameMap = new GameMap(batch);
         playerRender = new PlayerRender();
 
-        // Выбор генератора: сначала пытаемся загрузить уровень из файла "level.txt" в assets,
-        // при ошибке — используем рандомный генератор.
+        // --- Выбор генератора из конфига ---
         LevelGenerator generator;
         Level level;
-        try {
-            generator = new FileLevelGenerator("level.txt");
-            level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
-        } catch (Exception e) {
-            // fallback to random generator with 12% obstacle density
-            Gdx.app.log("LevelGen", "Failed to load level from file, falling back to random. Reason: " + e.getMessage());
-            generator = new RandomLevelGenerator(0.12f);
+
+        LevelMode mode = GameConfig.getLevelMode();
+        if (mode == LevelMode.FILE) {
+            try {
+                generator = new FileLevelGenerator(GameConfig.getLevelFilePath());
+                level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+            } catch (Exception e) {
+                Gdx.app.log("LevelGen", "Failed to load level from file, fallback to random. " + e.getMessage());
+                generator = new RandomLevelGenerator(GameConfig.getRandomObstacleDensity());
+                level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+            }
+        } else {
+            generator = new RandomLevelGenerator(GameConfig.getRandomObstacleDensity());
             level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
         }
 
-        // Создаём игрока на стартовой позиции
+        // Далее — всё как раньше:
         playerModel = new PlayerModel(level.getPlayerStart());
-
-        // Создаём деревья (модели + рендеры)
         Set<GridPoint2> obstacleSet = new HashSet<>(level.getObstacles());
+
         for (GridPoint2 pos : obstacleSet) {
             BaseModel treeModel = new GreenTreeModel(new GridPoint2(pos));
             treeModels.add(treeModel);
             treeRenders.add(new GreenTreeRender(gameMap, treeModel.getCoordinates()));
         }
 
-        // Инициализация системы ввода
         inputHandler = new CompositeInputHandler();
         inputHandler.addHandler(new PlayerMovementInputHandler(playerModel, obstacleSet));
     }
