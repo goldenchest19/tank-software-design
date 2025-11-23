@@ -6,6 +6,8 @@ import com.badlogic.gdx.math.GridPoint2;
 
 import java.util.List;
 
+import static com.badlogic.gdx.math.MathUtils.isEqual;
+
 /**
  * Enum, представляющий направления движения игрока
  * Каждое направление хранит:
@@ -45,5 +47,14 @@ public enum Direction {
      */
     public boolean isPressed() {
         return keys.stream().anyMatch(key -> Gdx.input.isKeyPressed(key));
+    }
+
+    public static Direction fromRotation(float rotation) {
+        for (Direction direction : values()) {
+            if (isEqual(direction.rotation, rotation)) {
+                return direction;
+            }
+        }
+        return RIGHT;
     }
 }

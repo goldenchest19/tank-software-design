@@ -33,6 +33,8 @@ public class PlayerModel extends BaseModel implements Movable {
 
     private int health = DEFAULT_HEALTH;
 
+    private boolean destroyed;
+
     public PlayerModel(GridPoint2 initialCoordinates) {
         super(initialCoordinates);
         playerDestinationCoordinates = new GridPoint2(initialCoordinates);
@@ -78,5 +80,33 @@ public class PlayerModel extends BaseModel implements Movable {
     @Override
     public int getMaxHealth() {
         return DEFAULT_HEALTH;
+    }
+
+    @Override
+    public void applyDamage(int damage) {
+        health = Math.max(0, health - damage);
+        if (health == 0) {
+            destroyed = true;
+        }
+    }
+
+    @Override
+    public boolean isDestroyed() {
+        return destroyed;
+    }
+
+    @Override
+    public GridPoint2 getDestinationCoordinates() {
+        return getPlayerDestinationCoordinates();
+    }
+
+    @Override
+    public float getMovementProgress() {
+        return getPlayerMovementProgress();
+    }
+
+    @Override
+    public float getRotation() {
+        return getPlayerRotation();
     }
 }

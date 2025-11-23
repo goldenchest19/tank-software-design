@@ -8,28 +8,22 @@ import com.badlogic.gdx.math.GridPoint2;
 import ru.mipt.bit.platformer.command.ToggleHealthBarCommand;
 import ru.mipt.bit.platformer.config.GameConfig;
 import ru.mipt.bit.platformer.config.GameConfig.LevelMode;
-import ru.mipt.bit.platformer.input.CompositeInputHandler;
-import ru.mipt.bit.platformer.input.HealthBarToggleInputHandler;
-import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
-import ru.mipt.bit.platformer.input.RandomTankMovementInputHandler;
+import ru.mipt.bit.platformer.input.*;
 import ru.mipt.bit.platformer.level.*;
-import ru.mipt.bit.platformer.model.BaseModel;
-import ru.mipt.bit.platformer.model.GreenTreeModel;
-import ru.mipt.bit.platformer.model.Movable;
-import ru.mipt.bit.platformer.model.PlayerModel;
+import ru.mipt.bit.platformer.model.*;
 import ru.mipt.bit.platformer.render.*;
 import ru.mipt.bit.platformer.state.GameWorld;
 import ru.mipt.bit.platformer.state.OccupiedCells;
+import ru.mipt.bit.platformer.state.WorldObserver;
 
 import java.util.*;
 
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
 
-public class GameDesktopLauncher implements ApplicationListener {
+public class GameDesktopLauncher implements ApplicationListener, WorldObserver {
 
     private Batch batch;
     private GameMap gameMap;
-    private MovableRenderer playerRender;
     private Movable playerModel;
     private OccupiedCells occupiedCells;
     private LevelBounds levelBounds;
@@ -37,16 +31,16 @@ public class GameDesktopLauncher implements ApplicationListener {
     private HealthBarVisibility healthBarVisibility;
 
     private final List<BaseModel> treeModels = new ArrayList<>();
-    private final List<GreenTreeRender> treeRenders = new ArrayList<>();
+    private final Map<BaseModel, GreenTreeRender> treeRenders = new HashMap<>();
     private final List<Movable> aiTanks = new ArrayList<>();
-    private final List<MovableRenderer> aiRenders = new ArrayList<>();
+    private final Map<Movable, MovableRenderer> tankRenderers = new HashMap<>();
+    private final Map<BulletModel, BulletRender> bulletRenderers = new HashMap<>();
 
     @Override
     public void create() {
         batch = new SpriteBatch();
         gameMap = new GameMap(batch);
         healthBarVisibility = new HealthBarVisibility();
-        playerRender = decorateWithHealthBar(new PlayerRender());
         levelBounds = new LevelBounds(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
 
         LevelGenerator generator;
@@ -76,24 +70,23 @@ public class GameDesktopLauncher implements ApplicationListener {
         for (GridPoint2 pos : obstacleSet) {
             BaseModel treeModel = new GreenTreeModel(new GridPoint2(pos));
             treeModels.add(treeModel);
-            treeRenders.add(new GreenTreeRender(gameMap, treeModel.getCoordinates()));
         }
 
         generateAiTanks(obstacleSet);
 
         CompositeInputHandler inputHandler = new CompositeInputHandler();
+        gameWorld = new GameWorld(playerModel, aiTanks, treeModels, occupiedCells, inputHandler, levelBounds);
+        gameWorld.addObserver(this);
 
         inputHandler.addHandler(
                 new PlayerMovementInputHandler(playerModel, occupiedCells, levelBounds)
         );
-
+        inputHandler.addHandler(new PlayerShootInputHandler(playerModel, gameWorld));
         inputHandler.addHandler(new HealthBarToggleInputHandler(new ToggleHealthBarCommand(healthBarVisibility)));
 
         for (Movable aiTank : aiTanks) {
-            inputHandler.addHandler(new RandomTankMovementInputHandler(aiTank, occupiedCells, levelBounds));
+            inputHandler.addHandler(new RandomTankMovementInputHandler(aiTank, occupiedCells, levelBounds, gameWorld));
         }
-
-        gameWorld = new GameWorld(playerModel, aiTanks, treeModels, occupiedCells, inputHandler);
     }
 
     @Override
@@ -109,13 +102,9 @@ public class GameDesktopLauncher implements ApplicationListener {
     @Override
     public void dispose() {
         // dispose of all the native resources (classes which implement com.badlogic.gdx.utils.Disposable)
-        for (GreenTreeRender r : treeRenders) {
-            r.dispose();
-        }
-        playerRender.dispose();
-        for (MovableRenderer aiRender : aiRenders) {
-            aiRender.dispose();
-        }
+        treeRenders.values().forEach(GreenTreeRender::dispose);
+        tankRenderers.values().forEach(MovableRenderer::dispose);
+        bulletRenderers.values().forEach(BulletRender::dispose);
         gameMap.levelDispose();
         batch.dispose();
     }
@@ -147,17 +136,13 @@ public class GameDesktopLauncher implements ApplicationListener {
         // start recording all drawing commands
         batch.begin();
 
-        // render player
-        playerRender.render(batch, playerModel);
+        // render player and ai tanks
+        renderMovables();
 
-        for (int i = 0; i < aiTanks.size(); i++) {
-            aiRenders.get(i).render(batch, aiTanks.get(i));
-        }
+        bulletRenderers.forEach((bullet, renderer) -> renderer.render(batch, bullet));
 
         // render all tree obstacles
-        for (GreenTreeRender r : treeRenders) {
-            r.render(batch);
-        }
+        treeRenders.values().forEach(render -> render.render(batch));
 
         // submit all drawing requests
         batch.end();
@@ -169,20 +154,31 @@ public class GameDesktopLauncher implements ApplicationListener {
     }
 
     private void updateRenderState() {
-        syncRenderState(playerModel, playerRender);
-        for (int i = 0; i < aiTanks.size(); i++) {
-            syncRenderState(aiTanks.get(i), aiRenders.get(i));
-        }
+        tankRenderers.forEach((tank, render) -> syncMovement(render.getPlayerRectangle(), tank));
+        bulletRenderers.forEach((bullet, render) -> syncMovement(render.getRectangle(), bullet));
     }
 
-    private void syncRenderState(Movable tank, MovableRenderer render) {
-        gameMap.moveRectangleBetweenTileCenters(render.getPlayerRectangle(), tank.getCoordinates(),
-                tank.getPlayerDestinationCoordinates(), tank.getPlayerMovementProgress());
+    private void syncMovement(com.badlogic.gdx.math.Rectangle rectangle, MovingEntity entity) {
+        gameMap.moveRectangleBetweenTileCenters(rectangle, entity.getCoordinates(),
+                entity.getDestinationCoordinates(), entity.getMovementProgress());
+    }
+
+    private void renderMovables() {
+        MovableRenderer playerRenderer = tankRenderers.get(playerModel);
+        if (playerRenderer != null) {
+            playerRenderer.render(batch, playerModel);
+        }
+
+        for (Movable aiTank : aiTanks) {
+            MovableRenderer aiRenderer = tankRenderers.get(aiTank);
+            if (aiRenderer != null) {
+                aiRenderer.render(batch, aiTank);
+            }
+        }
     }
 
     private void generateAiTanks(Set<GridPoint2> obstacleSet) {
         aiTanks.clear();
-        aiRenders.clear();
         Random random = new Random();
         Set<GridPoint2> occupied = new HashSet<>(obstacleSet);
         occupied.add(playerModel.getCoordinates());
@@ -197,9 +193,8 @@ public class GameDesktopLauncher implements ApplicationListener {
                 attempts++;
                 continue;
             }
-            Movable aiTank = new PlayerModel(candidate);
+            Movable aiTank = new AiTankModel(candidate);
             aiTanks.add(aiTank);
-            aiRenders.add(decorateWithHealthBar(new PlayerRender(true)));
             occupied.add(candidate);
             occupiedCells.registerStanding(aiTank);
             attempts++;
@@ -208,5 +203,43 @@ public class GameDesktopLauncher implements ApplicationListener {
 
     private MovableRenderer decorateWithHealthBar(MovableRenderer renderer) {
         return new HealthBarRenderDecorator(renderer, healthBarVisibility);
+    }
+
+    @Override
+    public void onObjectAdded(BaseModel model) {
+        if (model instanceof Movable) {
+            boolean useRedTexture = model instanceof AiTankModel;
+            tankRenderers.put((Movable) model, decorateWithHealthBar(new PlayerRender(useRedTexture)));
+            if (model != playerModel && !aiTanks.contains(model)) {
+                aiTanks.add((Movable) model);
+            }
+        } else if (model instanceof BulletModel) {
+            bulletRenderers.put((BulletModel) model, new BulletRender());
+        } else if (model instanceof GreenTreeModel) {
+            treeRenders.put(model, new GreenTreeRender(gameMap, model.getCoordinates()));
+        }
+    }
+
+    @Override
+    public void onObjectRemoved(BaseModel model) {
+        if (model instanceof Movable) {
+            MovableRenderer renderer = tankRenderers.remove(model);
+            if (renderer != null) {
+                renderer.dispose();
+            }
+            if (model != playerModel) {
+                aiTanks.remove(model);
+            }
+        } else if (model instanceof BulletModel) {
+            BulletRender render = bulletRenderers.remove(model);
+            if (render != null) {
+                render.dispose();
+            }
+        } else if (model instanceof GreenTreeModel) {
+            GreenTreeRender render = treeRenders.remove(model);
+            if (render != null) {
+                render.dispose();
+            }
+        }
     }
 }

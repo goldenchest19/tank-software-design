@@ -49,6 +49,10 @@ public class OccupiedCells {
         }
     }
 
+    public void remove(Movable movable) {
+        reservations.remove(movable);
+    }
+
     private static class Reservation {
         private final GridPoint2 from;
         private final GridPoint2 to;
