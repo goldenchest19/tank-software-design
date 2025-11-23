@@ -11,6 +11,7 @@ public class GameConfig {
     private static final LevelMode levelMode = LevelMode.FILE;
     private static final String levelFilePath = "level.txt";
     private static final float randomObstacleDensity = 0.12f;
+    private static final int aiTankCount = 3;
 
     public static LevelMode getLevelMode() {
         return levelMode;
@@ -22,5 +23,9 @@ public class GameConfig {
 
     public static float getRandomObstacleDensity() {
         return randomObstacleDensity;
+    }
+
+    public static int getAiTankCount() {
+        return aiTankCount;
     }
 }

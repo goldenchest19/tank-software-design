@@ -11,10 +11,11 @@ import static ru.mipt.bit.platformer.util.GdxGameUtils.drawTextureRegionUnscaled
 
 public class PlayerRender {
     private static final String IMAGES_TANK_BLUE_PNG = "images/tank_blue.png";
+    private static final String IMAGES_TANK_RED_PNG = "images/red_tank.png";
     /**
      * Текстура танка
      */
-    private final Texture blueTankTexture;
+    private final Texture tankTexture;
 
     /**
      * Графика танка
@@ -27,10 +28,18 @@ public class PlayerRender {
     private final Rectangle playerRectangle;
 
     public PlayerRender() {
+        this(IMAGES_TANK_BLUE_PNG);
+    }
+
+    public PlayerRender(boolean useRedTexture) {
+        this(useRedTexture ? IMAGES_TANK_RED_PNG : IMAGES_TANK_BLUE_PNG);
+    }
+
+    public PlayerRender(String texturePath) {
         // Texture decodes an image file and loads it into GPU memory, it represents a native resource
-        blueTankTexture = new Texture(IMAGES_TANK_BLUE_PNG);
+        tankTexture = new Texture(texturePath);
         // TextureRegion represents Texture portion, there may be many TextureRegion instances of the same Texture
-        playerGraphics = new TextureRegion(blueTankTexture);
+        playerGraphics = new TextureRegion(tankTexture);
         playerRectangle = createBoundingRectangle(playerGraphics);
     }
 
@@ -38,8 +47,8 @@ public class PlayerRender {
         return playerRectangle;
     }
 
-    public void blueTankTextureDispose() {
-        blueTankTexture.dispose();
+    public void dispose() {
+        tankTexture.dispose();
     }
 
     public void render(Batch batch, Movable playerModel) {

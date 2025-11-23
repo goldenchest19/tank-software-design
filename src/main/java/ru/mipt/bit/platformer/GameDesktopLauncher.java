@@ -9,6 +9,7 @@ import ru.mipt.bit.platformer.config.GameConfig;
 import ru.mipt.bit.platformer.config.GameConfig.LevelMode;
 import ru.mipt.bit.platformer.input.CompositeInputHandler;
 import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
+import ru.mipt.bit.platformer.input.RandomTankMovementInputHandler;
 import ru.mipt.bit.platformer.level.FileLevelGenerator;
 import ru.mipt.bit.platformer.level.Level;
 import ru.mipt.bit.platformer.level.LevelGenerator;
@@ -20,11 +21,9 @@ import ru.mipt.bit.platformer.model.PlayerModel;
 import ru.mipt.bit.platformer.render.GameMap;
 import ru.mipt.bit.platformer.render.GreenTreeRender;
 import ru.mipt.bit.platformer.render.PlayerRender;
+import ru.mipt.bit.platformer.state.OccupiedCells;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.badlogic.gdx.graphics.GL20.GL_COLOR_BUFFER_BIT;
 
@@ -35,9 +34,12 @@ public class GameDesktopLauncher implements ApplicationListener {
     private PlayerRender playerRender;
     private Movable playerModel;
     private CompositeInputHandler inputHandler;
+    private OccupiedCells occupiedCells;
 
     private final List<BaseModel> treeModels = new ArrayList<>();
     private final List<GreenTreeRender> treeRenders = new ArrayList<>();
+    private final List<Movable> aiTanks = new ArrayList<>();
+    private final List<PlayerRender> aiRenders = new ArrayList<>();
 
     @Override
     public void create() {
@@ -66,17 +68,26 @@ public class GameDesktopLauncher implements ApplicationListener {
         playerModel = new PlayerModel(level.getPlayerStart());
         Set<GridPoint2> obstacleSet = new HashSet<>(level.getObstacles());
 
+        occupiedCells = new OccupiedCells(obstacleSet);
+        occupiedCells.registerStanding(playerModel);
+
         for (GridPoint2 pos : obstacleSet) {
             BaseModel treeModel = new GreenTreeModel(new GridPoint2(pos));
             treeModels.add(treeModel);
             treeRenders.add(new GreenTreeRender(gameMap, treeModel.getCoordinates()));
         }
 
+        generateAiTanks(obstacleSet);
+
         inputHandler = new CompositeInputHandler();
 
         inputHandler.addHandler(
-                new PlayerMovementInputHandler(playerModel, obstacleSet, gameMap)
+                new PlayerMovementInputHandler(playerModel, occupiedCells, gameMap)
         );
+
+        for (Movable aiTank : aiTanks) {
+            inputHandler.addHandler(new RandomTankMovementInputHandler(aiTank, occupiedCells, gameMap));
+        }
     }
 
     @Override
@@ -95,7 +106,10 @@ public class GameDesktopLauncher implements ApplicationListener {
         for (GreenTreeRender r : treeRenders) {
             r.dispose();
         }
-        playerRender.blueTankTextureDispose();
+        playerRender.dispose();
+        for (PlayerRender aiRender : aiRenders) {
+            aiRender.dispose();
+        }
         gameMap.levelDispose();
         batch.dispose();
     }
@@ -120,10 +134,10 @@ public class GameDesktopLauncher implements ApplicationListener {
         inputHandler.handleInput();
 
         // calculate interpolated player screen coordinates
-        gameMap.moveRectangleBetweenTileCenters(playerRender.getPlayerRectangle(), playerModel.getCoordinates(),
-                playerModel.getPlayerDestinationCoordinates(), playerModel.getPlayerMovementProgress());
-
-        playerModel.updateProgress();
+        syncTankState(playerModel, playerRender);
+        for (int i = 0; i < aiTanks.size(); i++) {
+            syncTankState(aiTanks.get(i), aiRenders.get(i));
+        }
     }
 
     private void drawGraphicChanges() {
@@ -139,6 +153,10 @@ public class GameDesktopLauncher implements ApplicationListener {
         // render player
         playerRender.render(batch, playerModel);
 
+        for (int i = 0; i < aiTanks.size(); i++) {
+            aiRenders.get(i).render(batch, aiTanks.get(i));
+        }
+
         // render all tree obstacles
         for (GreenTreeRender r : treeRenders) {
             r.render(batch);
@@ -151,5 +169,39 @@ public class GameDesktopLauncher implements ApplicationListener {
     private static void clearScreen() {
         Gdx.gl.glClearColor(0f, 0f, 0.2f, 1f);
         Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
+    }
+
+    private void syncTankState(Movable tank, PlayerRender render) {
+        gameMap.moveRectangleBetweenTileCenters(render.getPlayerRectangle(), tank.getCoordinates(),
+                tank.getPlayerDestinationCoordinates(), tank.getPlayerMovementProgress());
+
+        tank.updateProgress();
+        occupiedCells.syncWithMovement(tank);
+    }
+
+    private void generateAiTanks(Set<GridPoint2> obstacleSet) {
+        aiTanks.clear();
+        aiRenders.clear();
+        Random random = new Random();
+        Set<GridPoint2> occupied = new HashSet<>(obstacleSet);
+        occupied.add(playerModel.getCoordinates());
+
+        int maxAttempts = gameMap.getGroundLayer().getWidth() * gameMap.getGroundLayer().getHeight() * 3;
+        int attempts = 0;
+        while (aiTanks.size() < GameConfig.getAiTankCount() && attempts < maxAttempts) {
+            int x = random.nextInt(gameMap.getGroundLayer().getWidth());
+            int y = random.nextInt(gameMap.getGroundLayer().getHeight());
+            GridPoint2 candidate = new GridPoint2(x, y);
+            if (occupied.contains(candidate)) {
+                attempts++;
+                continue;
+            }
+            Movable aiTank = new PlayerModel(candidate);
+            aiTanks.add(aiTank);
+            aiRenders.add(new PlayerRender(true));
+            occupied.add(candidate);
+            occupiedCells.registerStanding(aiTank);
+            attempts++;
+        }
     }
 }
