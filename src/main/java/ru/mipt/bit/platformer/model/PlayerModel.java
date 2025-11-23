@@ -14,6 +14,8 @@ public class PlayerModel extends BaseModel implements Movable {
      */
     private static final float MOVEMENT_SPEED = 0.4f;
 
+    private static final int DEFAULT_HEALTH = 100;
+
     /**
      * Координаты клетки, к которой движется игрок
      */
@@ -28,6 +30,8 @@ public class PlayerModel extends BaseModel implements Movable {
      * Прогресс перемещения игрока между клетками (от 0 до 1)
      */
     private float playerMovementProgress = 1f;
+
+    private int health = DEFAULT_HEALTH;
 
     public PlayerModel(GridPoint2 initialCoordinates) {
         super(initialCoordinates);
@@ -64,5 +68,15 @@ public class PlayerModel extends BaseModel implements Movable {
 
     public float getPlayerMovementProgress() {
         return playerMovementProgress;
+    }
+
+    @Override
+    public int getHealth() {
+        return health;
+    }
+
+    @Override
+    public int getMaxHealth() {
+        return DEFAULT_HEALTH;
     }
 }

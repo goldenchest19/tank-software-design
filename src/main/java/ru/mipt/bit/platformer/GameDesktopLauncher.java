@@ -5,9 +5,11 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.GridPoint2;
+import ru.mipt.bit.platformer.command.ToggleHealthBarCommand;
 import ru.mipt.bit.platformer.config.GameConfig;
 import ru.mipt.bit.platformer.config.GameConfig.LevelMode;
 import ru.mipt.bit.platformer.input.CompositeInputHandler;
+import ru.mipt.bit.platformer.input.HealthBarToggleInputHandler;
 import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
 import ru.mipt.bit.platformer.input.RandomTankMovementInputHandler;
 import ru.mipt.bit.platformer.level.*;
@@ -15,9 +17,7 @@ import ru.mipt.bit.platformer.model.BaseModel;
 import ru.mipt.bit.platformer.model.GreenTreeModel;
 import ru.mipt.bit.platformer.model.Movable;
 import ru.mipt.bit.platformer.model.PlayerModel;
-import ru.mipt.bit.platformer.render.GameMap;
-import ru.mipt.bit.platformer.render.GreenTreeRender;
-import ru.mipt.bit.platformer.render.PlayerRender;
+import ru.mipt.bit.platformer.render.*;
 import ru.mipt.bit.platformer.state.GameWorld;
 import ru.mipt.bit.platformer.state.OccupiedCells;
 
@@ -29,22 +29,24 @@ public class GameDesktopLauncher implements ApplicationListener {
 
     private Batch batch;
     private GameMap gameMap;
-    private PlayerRender playerRender;
+    private MovableRenderer playerRender;
     private Movable playerModel;
     private OccupiedCells occupiedCells;
     private LevelBounds levelBounds;
     private GameWorld gameWorld;
+    private HealthBarVisibility healthBarVisibility;
 
     private final List<BaseModel> treeModels = new ArrayList<>();
     private final List<GreenTreeRender> treeRenders = new ArrayList<>();
     private final List<Movable> aiTanks = new ArrayList<>();
-    private final List<PlayerRender> aiRenders = new ArrayList<>();
+    private final List<MovableRenderer> aiRenders = new ArrayList<>();
 
     @Override
     public void create() {
         batch = new SpriteBatch();
         gameMap = new GameMap(batch);
-        playerRender = new PlayerRender();
+        healthBarVisibility = new HealthBarVisibility();
+        playerRender = decorateWithHealthBar(new PlayerRender());
         levelBounds = new LevelBounds(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
 
         LevelGenerator generator;
@@ -85,6 +87,8 @@ public class GameDesktopLauncher implements ApplicationListener {
                 new PlayerMovementInputHandler(playerModel, occupiedCells, levelBounds)
         );
 
+        inputHandler.addHandler(new HealthBarToggleInputHandler(new ToggleHealthBarCommand(healthBarVisibility)));
+
         for (Movable aiTank : aiTanks) {
             inputHandler.addHandler(new RandomTankMovementInputHandler(aiTank, occupiedCells, levelBounds));
         }
@@ -109,7 +113,7 @@ public class GameDesktopLauncher implements ApplicationListener {
             r.dispose();
         }
         playerRender.dispose();
-        for (PlayerRender aiRender : aiRenders) {
+        for (MovableRenderer aiRender : aiRenders) {
             aiRender.dispose();
         }
         gameMap.levelDispose();
@@ -171,7 +175,7 @@ public class GameDesktopLauncher implements ApplicationListener {
         }
     }
 
-    private void syncRenderState(Movable tank, PlayerRender render) {
+    private void syncRenderState(Movable tank, MovableRenderer render) {
         gameMap.moveRectangleBetweenTileCenters(render.getPlayerRectangle(), tank.getCoordinates(),
                 tank.getPlayerDestinationCoordinates(), tank.getPlayerMovementProgress());
     }
@@ -195,10 +199,14 @@ public class GameDesktopLauncher implements ApplicationListener {
             }
             Movable aiTank = new PlayerModel(candidate);
             aiTanks.add(aiTank);
-            aiRenders.add(new PlayerRender(true));
+            aiRenders.add(decorateWithHealthBar(new PlayerRender(true)));
             occupied.add(candidate);
             occupiedCells.registerStanding(aiTank);
             attempts++;
         }
+    }
+
+    private MovableRenderer decorateWithHealthBar(MovableRenderer renderer) {
+        return new HealthBarRenderDecorator(renderer, healthBarVisibility);
     }
 }

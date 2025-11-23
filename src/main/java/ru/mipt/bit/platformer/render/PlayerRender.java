@@ -9,7 +9,7 @@ import ru.mipt.bit.platformer.model.Movable;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.createBoundingRectangle;
 import static ru.mipt.bit.platformer.util.GdxGameUtils.drawTextureRegionUnscaled;
 
-public class PlayerRender {
+public class PlayerRender implements MovableRenderer {
     private static final String IMAGES_TANK_BLUE_PNG = "images/tank_blue.png";
     private static final String IMAGES_TANK_RED_PNG = "images/red_tank.png";
     /**
@@ -43,14 +43,17 @@ public class PlayerRender {
         playerRectangle = createBoundingRectangle(playerGraphics);
     }
 
+    @Override
     public Rectangle getPlayerRectangle() {
         return playerRectangle;
     }
 
+    @Override
     public void dispose() {
         tankTexture.dispose();
     }
 
+    @Override
     public void render(Batch batch, Movable playerModel) {
         drawTextureRegionUnscaled(batch, playerGraphics, playerRectangle, playerModel.getPlayerRotation());
     }

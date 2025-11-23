@@ -10,4 +10,6 @@ public interface Movable {
     void setPlayerRotation(float rotation);
     float getPlayerRotation();
     void updateProgress(float deltaTime);
+    int getHealth();
+    int getMaxHealth();
 }
