@@ -1,12 +1,24 @@
-def versions = [:]
-versions.gdx = '1.9.11'
+ext {
+    versions = [
+            gdx: '1.12.0',
+            junit: '5.10.0',
+            mockito: '5.12.0',
+            spring: '5.3.31'
+    ]
 
-def deps = [:]
-
-def gdx = [:]
-gdx.gdx = "com.badlogicgames.gdx:gdx:$versions.gdx"
-gdx.backend_lwjgl3 = "com.badlogicgames.gdx:gdx-backend-lwjgl3:$versions.gdx"
-gdx.platform_desktop = "com.badlogicgames.gdx:gdx-platform:$versions.gdx:natives-desktop"
-deps.gdx = gdx
-
-ext.deps = deps
+    deps = [
+            gdx: [
+                    gdx: "com.badlogicgames.gdx:gdx:${versions.gdx}",
+                    backend_lwjgl3: "com.badlogicgames.gdx:gdx-backend-lwjgl3:${versions.gdx}",
+                    platform_desktop: "com.badlogicgames.gdx:gdx-platform:${versions.gdx}:natives-desktop"
+            ],
+            spring: [
+                    context: "org.springframework:spring-context:${versions.spring}"
+            ],
+            test: [
+                    jupiterApi: "org.junit.jupiter:junit-jupiter-api:${versions.junit}",
+                    jupiterEngine: "org.junit.jupiter:junit-jupiter-engine:${versions.junit}",
+                    mockitoCore: "org.mockito:mockito-core:${versions.mockito}"
+            ]
+    ]
+}
