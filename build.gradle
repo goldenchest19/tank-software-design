@@ -31,4 +31,5 @@ dependencies {
     testImplementation deps.test.jupiterApi
     testRuntimeOnly deps.test.jupiterEngine
     testImplementation deps.test.mockitoCore
+    implementation deps.spring.context
 }

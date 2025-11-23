@@ -5,10 +5,11 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.GridPoint2;
-import ru.mipt.bit.platformer.command.ToggleHealthBarCommand;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import ru.mipt.bit.platformer.config.GameConfig;
 import ru.mipt.bit.platformer.config.GameConfig.LevelMode;
-import ru.mipt.bit.platformer.input.*;
+import ru.mipt.bit.platformer.config.InputHandlersConfiguration;
+import ru.mipt.bit.platformer.input.CompositeInputHandler;
 import ru.mipt.bit.platformer.level.*;
 import ru.mipt.bit.platformer.model.*;
 import ru.mipt.bit.platformer.render.*;
@@ -29,6 +30,8 @@ public class GameDesktopLauncher implements ApplicationListener, WorldObserver {
     private LevelBounds levelBounds;
     private GameWorld gameWorld;
     private HealthBarVisibility healthBarVisibility;
+    private CompositeInputHandler inputHandler;
+    private AnnotationConfigApplicationContext applicationContext;
 
     private final List<BaseModel> treeModels = new ArrayList<>();
     private final Map<BaseModel, GreenTreeRender> treeRenders = new HashMap<>();
@@ -74,19 +77,11 @@ public class GameDesktopLauncher implements ApplicationListener, WorldObserver {
 
         generateAiTanks(obstacleSet);
 
-        CompositeInputHandler inputHandler = new CompositeInputHandler();
+        inputHandler = new CompositeInputHandler();
         gameWorld = new GameWorld(playerModel, aiTanks, treeModels, occupiedCells, inputHandler, levelBounds);
         gameWorld.addObserver(this);
 
-        inputHandler.addHandler(
-                new PlayerMovementInputHandler(playerModel, occupiedCells, levelBounds)
-        );
-        inputHandler.addHandler(new PlayerShootInputHandler(playerModel, gameWorld));
-        inputHandler.addHandler(new HealthBarToggleInputHandler(new ToggleHealthBarCommand(healthBarVisibility)));
-
-        for (Movable aiTank : aiTanks) {
-            inputHandler.addHandler(new RandomTankMovementInputHandler(aiTank, occupiedCells, levelBounds, gameWorld));
-        }
+        initializeSpringContext();
     }
 
     @Override
@@ -107,6 +102,9 @@ public class GameDesktopLauncher implements ApplicationListener, WorldObserver {
         bulletRenderers.values().forEach(BulletRender::dispose);
         gameMap.levelDispose();
         batch.dispose();
+        if (applicationContext != null) {
+            applicationContext.close();
+        }
     }
 
     @Override
@@ -241,5 +239,19 @@ public class GameDesktopLauncher implements ApplicationListener, WorldObserver {
                 render.dispose();
             }
         }
+    }
+
+    private void initializeSpringContext() {
+        applicationContext = new AnnotationConfigApplicationContext();
+        applicationContext.getBeanFactory().registerSingleton("playerModel", playerModel);
+        applicationContext.getBeanFactory().registerSingleton("occupiedCells", occupiedCells);
+        applicationContext.getBeanFactory().registerSingleton("levelBounds", levelBounds);
+        applicationContext.getBeanFactory().registerSingleton("healthBarVisibility", healthBarVisibility);
+        applicationContext.getBeanFactory().registerSingleton("projectileSpawner", gameWorld);
+        applicationContext.getBeanFactory().registerSingleton("aiTanks", aiTanks);
+        applicationContext.getBeanFactory().registerSingleton("compositeInputHandler", inputHandler);
+        applicationContext.register(InputHandlersConfiguration.class);
+        applicationContext.refresh();
+        inputHandler = applicationContext.getBean(CompositeInputHandler.class);
     }
 }
