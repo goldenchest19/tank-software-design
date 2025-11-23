@@ -10,7 +10,7 @@ group 'ru.mipt.bit'
 version '1.0-SNAPSHOT'
 
 application {
-    mainClassName = 'ru.mipt.bit.platformer.GameDesktopLauncher'
+    mainClassName = 'ru.mipt.bit.platformer.Main'
     if (Os.isFamily(Os.FAMILY_MAC)) {
         applicationDefaultJvmArgs = ['-XstartOnFirstThread']
     }
@@ -20,8 +20,15 @@ repositories {
     mavenCentral()
 }
 
+test {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation deps.gdx.gdx
     implementation deps.gdx.backend_lwjgl3
     implementation deps.gdx.platform_desktop
+    testImplementation deps.test.jupiterApi
+    testRuntimeOnly deps.test.jupiterEngine
+    testImplementation deps.test.mockitoCore
 }
