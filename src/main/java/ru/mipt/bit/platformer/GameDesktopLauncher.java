@@ -10,10 +10,7 @@ import ru.mipt.bit.platformer.config.GameConfig.LevelMode;
 import ru.mipt.bit.platformer.input.CompositeInputHandler;
 import ru.mipt.bit.platformer.input.PlayerMovementInputHandler;
 import ru.mipt.bit.platformer.input.RandomTankMovementInputHandler;
-import ru.mipt.bit.platformer.level.FileLevelGenerator;
-import ru.mipt.bit.platformer.level.Level;
-import ru.mipt.bit.platformer.level.LevelGenerator;
-import ru.mipt.bit.platformer.level.RandomLevelGenerator;
+import ru.mipt.bit.platformer.level.*;
 import ru.mipt.bit.platformer.model.BaseModel;
 import ru.mipt.bit.platformer.model.GreenTreeModel;
 import ru.mipt.bit.platformer.model.Movable;
@@ -21,6 +18,7 @@ import ru.mipt.bit.platformer.model.PlayerModel;
 import ru.mipt.bit.platformer.render.GameMap;
 import ru.mipt.bit.platformer.render.GreenTreeRender;
 import ru.mipt.bit.platformer.render.PlayerRender;
+import ru.mipt.bit.platformer.state.GameWorld;
 import ru.mipt.bit.platformer.state.OccupiedCells;
 
 import java.util.*;
@@ -33,8 +31,9 @@ public class GameDesktopLauncher implements ApplicationListener {
     private GameMap gameMap;
     private PlayerRender playerRender;
     private Movable playerModel;
-    private CompositeInputHandler inputHandler;
     private OccupiedCells occupiedCells;
+    private LevelBounds levelBounds;
+    private GameWorld gameWorld;
 
     private final List<BaseModel> treeModels = new ArrayList<>();
     private final List<GreenTreeRender> treeRenders = new ArrayList<>();
@@ -46,6 +45,7 @@ public class GameDesktopLauncher implements ApplicationListener {
         batch = new SpriteBatch();
         gameMap = new GameMap(batch);
         playerRender = new PlayerRender();
+        levelBounds = new LevelBounds(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
 
         LevelGenerator generator;
         Level level;
@@ -54,15 +54,15 @@ public class GameDesktopLauncher implements ApplicationListener {
         if (mode == LevelMode.FILE) {
             try {
                 generator = new FileLevelGenerator(GameConfig.getLevelFilePath());
-                level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+                level = generator.generate(levelBounds.getWidth(), levelBounds.getHeight());
             } catch (Exception e) {
                 Gdx.app.log("LevelGen", "Failed to load level from file, fallback to random. " + e.getMessage());
                 generator = new RandomLevelGenerator(GameConfig.getRandomObstacleDensity());
-                level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+                level = generator.generate(levelBounds.getWidth(), levelBounds.getHeight());
             }
         } else {
             generator = new RandomLevelGenerator(GameConfig.getRandomObstacleDensity());
-            level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
+            level = generator.generate(levelBounds.getWidth(), levelBounds.getHeight());
         }
 
         playerModel = new PlayerModel(level.getPlayerStart());
@@ -79,20 +79,22 @@ public class GameDesktopLauncher implements ApplicationListener {
 
         generateAiTanks(obstacleSet);
 
-        inputHandler = new CompositeInputHandler();
+        CompositeInputHandler inputHandler = new CompositeInputHandler();
 
         inputHandler.addHandler(
-                new PlayerMovementInputHandler(playerModel, occupiedCells, gameMap)
+                new PlayerMovementInputHandler(playerModel, occupiedCells, levelBounds)
         );
 
         for (Movable aiTank : aiTanks) {
-            inputHandler.addHandler(new RandomTankMovementInputHandler(aiTank, occupiedCells, gameMap));
+            inputHandler.addHandler(new RandomTankMovementInputHandler(aiTank, occupiedCells, levelBounds));
         }
+
+        gameWorld = new GameWorld(playerModel, aiTanks, treeModels, occupiedCells, inputHandler);
     }
 
     @Override
     public void render() {
-        updateGameProgress();
+        gameWorld.update(Gdx.graphics.getDeltaTime());
 
         drawGraphicChanges();
     }
@@ -129,23 +131,14 @@ public class GameDesktopLauncher implements ApplicationListener {
         // game doesn't get paused
     }
 
-    private void updateGameProgress() {
-        // Теперь обработка ввода вынесена в отдельный класс
-        inputHandler.handleInput();
-
-        // calculate interpolated player screen coordinates
-        syncTankState(playerModel, playerRender);
-        for (int i = 0; i < aiTanks.size(); i++) {
-            syncTankState(aiTanks.get(i), aiRenders.get(i));
-        }
-    }
-
     private void drawGraphicChanges() {
         // clear the screen
         clearScreen();
 
         // render each tile of the level
         gameMap.render();
+
+        updateRenderState();
 
         // start recording all drawing commands
         batch.begin();
@@ -171,12 +164,16 @@ public class GameDesktopLauncher implements ApplicationListener {
         Gdx.gl.glClear(GL_COLOR_BUFFER_BIT);
     }
 
-    private void syncTankState(Movable tank, PlayerRender render) {
+    private void updateRenderState() {
+        syncRenderState(playerModel, playerRender);
+        for (int i = 0; i < aiTanks.size(); i++) {
+            syncRenderState(aiTanks.get(i), aiRenders.get(i));
+        }
+    }
+
+    private void syncRenderState(Movable tank, PlayerRender render) {
         gameMap.moveRectangleBetweenTileCenters(render.getPlayerRectangle(), tank.getCoordinates(),
                 tank.getPlayerDestinationCoordinates(), tank.getPlayerMovementProgress());
-
-        tank.updateProgress();
-        occupiedCells.syncWithMovement(tank);
     }
 
     private void generateAiTanks(Set<GridPoint2> obstacleSet) {
@@ -186,11 +183,11 @@ public class GameDesktopLauncher implements ApplicationListener {
         Set<GridPoint2> occupied = new HashSet<>(obstacleSet);
         occupied.add(playerModel.getCoordinates());
 
-        int maxAttempts = gameMap.getGroundLayer().getWidth() * gameMap.getGroundLayer().getHeight() * 3;
+        int maxAttempts = levelBounds.getWidth() * levelBounds.getHeight() * 3;
         int attempts = 0;
         while (aiTanks.size() < GameConfig.getAiTankCount() && attempts < maxAttempts) {
-            int x = random.nextInt(gameMap.getGroundLayer().getWidth());
-            int y = random.nextInt(gameMap.getGroundLayer().getHeight());
+            int x = random.nextInt(levelBounds.getWidth());
+            int y = random.nextInt(levelBounds.getHeight());
             GridPoint2 candidate = new GridPoint2(x, y);
             if (occupied.contains(candidate)) {
                 attempts++;

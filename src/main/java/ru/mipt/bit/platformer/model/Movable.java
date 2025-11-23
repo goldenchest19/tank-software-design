@@ -9,5 +9,5 @@ public interface Movable {
     void resetMovementProgress();
     void setPlayerRotation(float rotation);
     float getPlayerRotation();
-    void updateProgress();
+    void updateProgress(float deltaTime);
 }

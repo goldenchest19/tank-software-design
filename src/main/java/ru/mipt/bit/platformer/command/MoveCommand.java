@@ -1,9 +1,9 @@
 package ru.mipt.bit.platformer.command;
 
 import com.badlogic.gdx.math.GridPoint2;
+import ru.mipt.bit.platformer.level.LevelBounds;
 import ru.mipt.bit.platformer.model.Direction;
 import ru.mipt.bit.platformer.model.Movable;
-import ru.mipt.bit.platformer.render.GameMap;
 import ru.mipt.bit.platformer.state.OccupiedCells;
 
 import static com.badlogic.gdx.math.MathUtils.isEqual;
@@ -13,13 +13,13 @@ public class MoveCommand implements Command {
     private final Movable movable;
     private final Direction direction;
     private final OccupiedCells occupiedCells;
-    private final GameMap gameMap;
+    private final LevelBounds levelBounds;
 
-    public MoveCommand(Movable movable, Direction direction, OccupiedCells occupiedCells, GameMap gameMap) {
+    public MoveCommand(Movable movable, Direction direction, OccupiedCells occupiedCells, LevelBounds levelBounds) {
         this.movable = movable;
         this.direction = direction;
         this.occupiedCells = occupiedCells;
-        this.gameMap = gameMap;
+        this.levelBounds = levelBounds;
     }
 
     @Override
@@ -32,8 +32,7 @@ public class MoveCommand implements Command {
 
         GridPoint2 next = new GridPoint2(movable.getCoordinates()).add(direction.getDelta());
 
-        if (next.x < 0 || next.x >= gameMap.getGroundLayer().getWidth()
-                || next.y < 0 || next.y >= gameMap.getGroundLayer().getHeight()) {
+        if (!levelBounds.contains(next)) {
             return false;
         }
 

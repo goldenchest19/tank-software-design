@@ -1,6 +1,5 @@
 package ru.mipt.bit.platformer.model;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.GridPoint2;
 
 import static com.badlogic.gdx.math.MathUtils.isEqual;
@@ -39,10 +38,7 @@ public class PlayerModel extends BaseModel implements Movable {
     /**
      * Обновляет прогресс движения игрока между клетками
      */
-    public void updateProgress() {
-        // время, прошедшее с прошлого кадра
-        float deltaTime = Gdx.graphics.getDeltaTime();
-
+    public void updateProgress(float deltaTime) {
         playerMovementProgress = continueProgress(playerMovementProgress, deltaTime, MOVEMENT_SPEED);
         if (isEqual(playerMovementProgress, 1f)) {
             // record that the player has reached his/her destination
