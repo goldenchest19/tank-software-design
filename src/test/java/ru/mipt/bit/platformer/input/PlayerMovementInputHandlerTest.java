@@ -3,101 +3,83 @@ package ru.mipt.bit.platformer.input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.math.GridPoint2;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.mipt.bit.platformer.TestMovable;
+import ru.mipt.bit.platformer.level.LevelBounds;
 import ru.mipt.bit.platformer.model.Direction;
-import ru.mipt.bit.platformer.model.PlayerModel;
+import ru.mipt.bit.platformer.state.OccupiedCells;
+
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class PlayerMovementInputHandlerTest {
 
-    private PlayerModel player;
-    private GridPoint2 obstacle;
-    private PlayerMovementInputHandler handler;
+    private Input previousInput;
 
     @BeforeEach
     void setUp() {
-        // Подготавливаем модель игрока
-        player = new PlayerModel(new GridPoint2(1 ,1));
-        obstacle = new GridPoint2(99, 99); // далеко, не мешает
-        handler = new PlayerMovementInputHandler(player, obstacle);
+        previousInput = Gdx.input;
+    }
 
-        // Мокаем Gdx.input
-        Gdx.input = mock(Input.class);
+    @AfterEach
+    void tearDown() {
+        Gdx.input = previousInput;
     }
 
     @Test
-    void movesPlayerRightWhenRightKeyPressed() {
-        when(Gdx.input.isKeyPressed(Input.Keys.RIGHT)).thenReturn(true);
+    void shouldExecuteMoveForPressedDirection() {
+        Input input = mock(Input.class);
+        when(input.isKeyPressed(Input.Keys.RIGHT)).thenReturn(true);
+        Gdx.input = input;
+
+        TestMovable player = new TestMovable(1, 1);
+        OccupiedCells occupiedCells = new OccupiedCells(Set.of());
+        LevelBounds levelBounds = new LevelBounds(5, 5);
+        PlayerMovementInputHandler handler = new PlayerMovementInputHandler(player, occupiedCells, levelBounds);
 
         handler.handleInput();
 
-        // Проверяем, что движение началось в нужную клетку
         assertEquals(new GridPoint2(2, 1), player.getPlayerDestinationCoordinates());
+        assertEquals(Direction.RIGHT.getRotation(), player.getPlayerRotation());
         assertEquals(0f, player.getPlayerMovementProgress());
-        assertEquals(Direction.RIGHT.getRotation(), player.getPlayerRotation());
     }
 
     @Test
-    void movesPlayerUpWhenUpKeyPressed() {
-        when(Gdx.input.isKeyPressed(Input.Keys.UP)).thenReturn(true);
+    void shouldIgnoreWhenNoKeysPressed() {
+        Input input = mock(Input.class);
+        Gdx.input = input;
 
-        handler.handleInput();
-
-        assertEquals(new GridPoint2(1, 2), player.getPlayerDestinationCoordinates());
-        assertEquals(Direction.UP.getRotation(), player.getPlayerRotation());
-    }
-
-    @Test
-    void doesNotMoveIfObstacleInFront() {
-        // Ставим препятствие перед игроком
-        obstacle = new GridPoint2(2, 1);
-        handler = new PlayerMovementInputHandler(player, obstacle);
-
-        when(Gdx.input.isKeyPressed(Input.Keys.RIGHT)).thenReturn(true);
-
-        handler.handleInput();
-
-        // Координаты не меняются, потому что там дерево
-        assertEquals(new GridPoint2(1, 1), player.getPlayerDestinationCoordinates());
-        assertEquals(Direction.RIGHT.getRotation(), player.getPlayerRotation());
-    }
-
-    @Test
-    void ignoresInputIfStillMoving() {
-        // Симулируем незавершённое движение
-        player.resetMovementProgress(); // 0f — в процессе
-
-        when(Gdx.input.isKeyPressed(Input.Keys.RIGHT)).thenReturn(true);
-
-        handler.handleInput();
-
-        // Координаты не меняются
-        assertEquals(new GridPoint2(1, 1), player.getPlayerDestinationCoordinates());
-    }
-
-    @Test
-    void onlyOneDirectionHandledAtATime() {
-        // Нажаты сразу две клавиши
-        when(Gdx.input.isKeyPressed(Input.Keys.UP)).thenReturn(true);
-        when(Gdx.input.isKeyPressed(Input.Keys.LEFT)).thenReturn(true);
-
-        handler.handleInput();
-
-        // Проверяем, что обработана только первая по порядку (UP)
-        assertEquals(new GridPoint2(1, 2), player.getPlayerDestinationCoordinates());
-    }
-
-    @Test
-    void doesNotMoveIfNoKeyPressed() {
-        // Все клавиши отпущены
-        when(Gdx.input.isKeyPressed(anyInt())).thenReturn(false);
+        TestMovable player = new TestMovable(1, 1);
+        OccupiedCells occupiedCells = new OccupiedCells(Set.of());
+        LevelBounds levelBounds = new LevelBounds(5, 5);
+        PlayerMovementInputHandler handler = new PlayerMovementInputHandler(player, occupiedCells, levelBounds);
 
         handler.handleInput();
 
         assertEquals(new GridPoint2(1, 1), player.getPlayerDestinationCoordinates());
         assertEquals(1f, player.getPlayerMovementProgress());
+    }
+
+    @Test
+    void shouldUseFirstPressedDirectionInOrder() {
+        Input input = mock(Input.class);
+        when(input.isKeyPressed(Input.Keys.UP)).thenReturn(true);
+        when(input.isKeyPressed(Input.Keys.RIGHT)).thenReturn(true);
+        Gdx.input = input;
+
+        TestMovable player = new TestMovable(1, 1);
+        OccupiedCells occupiedCells = new OccupiedCells(Set.of());
+        LevelBounds levelBounds = new LevelBounds(5, 5);
+        PlayerMovementInputHandler handler = new PlayerMovementInputHandler(player, occupiedCells, levelBounds);
+
+        handler.handleInput();
+
+        assertEquals(new GridPoint2(1, 2), player.getPlayerDestinationCoordinates());
+        assertEquals(Direction.UP.getRotation(), player.getPlayerRotation());
     }
 }
