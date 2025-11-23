@@ -36,7 +36,6 @@ public class GameDesktopLauncher implements ApplicationListener {
     private Movable playerModel;
     private CompositeInputHandler inputHandler;
 
-    // Деревья: храним модели и рендеры в списках
     private final List<BaseModel> treeModels = new ArrayList<>();
     private final List<GreenTreeRender> treeRenders = new ArrayList<>();
 
@@ -46,7 +45,6 @@ public class GameDesktopLauncher implements ApplicationListener {
         gameMap = new GameMap(batch);
         playerRender = new PlayerRender();
 
-        // --- Выбор генератора из конфига ---
         LevelGenerator generator;
         Level level;
 
@@ -65,7 +63,6 @@ public class GameDesktopLauncher implements ApplicationListener {
             level = generator.generate(gameMap.getGroundLayer().getWidth(), gameMap.getGroundLayer().getHeight());
         }
 
-        // Далее — всё как раньше:
         playerModel = new PlayerModel(level.getPlayerStart());
         Set<GridPoint2> obstacleSet = new HashSet<>(level.getObstacles());
 
@@ -76,7 +73,10 @@ public class GameDesktopLauncher implements ApplicationListener {
         }
 
         inputHandler = new CompositeInputHandler();
-        inputHandler.addHandler(new PlayerMovementInputHandler(playerModel, obstacleSet));
+
+        inputHandler.addHandler(
+                new PlayerMovementInputHandler(playerModel, obstacleSet, gameMap)
+        );
     }
 
     @Override
